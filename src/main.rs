@@ -1,64 +1,70 @@
+use std::str;
 
-fn permute_word(mut word: Vec<u8>, key: usize) -> Vec<u8>{
+fn vec_xor(vec1: Vec<u8>, vec2: Vec<u8>)  -> Vec<u8> {
+    let mut res = Vec::new();
+    for (i, j) in vec1.iter().zip(vec2.iter()) {
+        res.push(i ^ j);
+    }
+    res
+}
+
+fn vec_invert(vect: Vec<u8>) -> Vec<u8>{
+    vect.iter().map(|x| !x).collect::<Vec<u8>>()
+}
+
+fn bit_left(vect: Vec<u8>) -> Vec<u8>{
+    vect.iter().map(|x| x << 1).collect::<Vec<u8>>()
+}
+
+
+fn permute_word(mut word: Vec<u8>, key: u8) -> Vec<u8>{
     for i in 0..word.len() {
-        let ln = word.len();
-        word.swap(i, (i + key) % ln);
+        let new_index = (i + key as usize) % word.len();
+        word.swap(i, new_index);
     }
     word
 }
 
-fn keys_gen(key: &str, decrypt: bool, rounds: u8) -> Vec<Vec<u8>>{
+fn f(right: Vec<u8>, key: Vec<u8>) -> Vec<u8>{
+    bit_left(vec_invert(vec_xor(right, key)))
+}
+
+fn keys_gen(key: Vec<u8>, decrypt: bool, rounds: u8) -> Vec<Vec<u8>>{
     let mut res:Vec<Vec<u8>> = Vec::new();
     for i in 0..rounds {
-        res.push(permute_word(key.as_bytes().to_vec(), (i+2) as usize));
+        res.push(permute_word(key.clone(), i));
     }
-    if decrypt {res.reverse()}
-    res
-}
-
-fn word_slice_gen(word: &str) -> Vec<Vec<u8>> {
-    let mut res: Vec<Vec<u8>> = Vec::new();
-    let mut format_str = word.as_bytes().to_vec(); 
-    while format_str.len() % 4 != 0 {
-        format_str.push(0);
-    }
-    for i in 0..(format_str.len()/4) {
-        let cut:Vec<u8>  = format_str[0+4*i..4+4*i].to_vec();
-        res.push(cut);
+   
+    if decrypt == true {
+        res.reverse();
     }
     res
 }
 
-fn f(mut right: Vec<u8>, key: Vec<u8>) -> Vec<u8>{
-    for i in 0..right.len() {
-        right[i] ^= &key[i];
-        right[i] = !right[i];
-        right[i] <<= 1;
-    }
-    right
+fn crypt_round(block: Vec<u8>, round_key: Vec<u8>) -> Vec<u8>{
+    let left = block[0..block.len()/2].to_vec();
+    let right = block[block.len()/2..block.len()].to_vec();
+    let new_right = vec_xor(left, f(right.clone(), round_key));
+    [right, new_right].concat()
 }
 
-fn crypt_round(mut left: Vec<u8>, right: Vec<u8>, key: Vec<u8>) -> Vec<Vec<u8>>{
-    for i in 0..left.len() {
-        let res_f = f(right.clone(), key.clone());
-        left[i] = left[i] ^ res_f[i];
+fn crypt_block(mut block: Vec<u8>, key: Vec<u8>, decrypt:bool, rounds:u8) -> Vec<u8>{
+    let keys = keys_gen(key, decrypt, rounds);
+    for round_key in keys{
+        block = crypt_round(block, round_key);
     }
-    vec![right, left]
+    let left = block[0..block.len()/2].to_vec();
+    let right = block[block.len()/2..block.len()].to_vec();
+    [right, left].concat()
 }
 
-fn crypt_tool(word: &str, key: &str, decrypt: bool) {
-    let keys = keys_gen(key, decrypt, 12);
-    let word_slices = word_slice_gen(word);
-    for i in 0..word_slices.len(){
-        
-    }
-}   
-
-fn main() {
-    let word = "boykostansilav";
-    let key = "lock";
-    let res = word_slice_gen(word);
-    let k = keys_gen(key, true, 3);
-    println!("{:?}", res);
-    println!("{:?}", k);
+fn main(){
+    let block: Vec<u8> = "budapesh".as_bytes().to_vec();
+    let key: Vec<u8> = "rust".as_bytes().to_vec();
+    let rounds:u8 = 10;
+    let encrypt: Vec<u8> = crypt_block(block.clone(), key.clone(), false, rounds);
+    let decrypt: Vec<u8> = crypt_block(encrypt.clone(), key.clone(), true, rounds);
+    println!("{:?}", block);
+    println!("{:?}", encrypt);
+    println!("{:?}", decrypt)
 }
