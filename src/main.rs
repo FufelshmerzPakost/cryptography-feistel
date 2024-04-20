@@ -1,4 +1,3 @@
-use std::str;
 
 fn vec_xor(vec1: Vec<u8>, vec2: Vec<u8>)  -> Vec<u8> {
     let mut res = Vec::new();
